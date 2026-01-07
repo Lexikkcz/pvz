@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plants vs Zombies - Obrana zahrady</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #87CEEB, #90EE90);
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #topBar {
+            background: #2d5016;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        #sunCounter {
+            background: #ffd700;
+            color: #333;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #stats {
+            font-size: 20px;
+            display: flex;
+            gap: 30px;
+        }
+        
+        #plantMenu {
+            padding: 15px;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .plantButton {
+            background: #90EE90;
+            border: 3px solid #228B22;
+            padding: 15px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+
+        #shovelBtn {
+            background: #8B4513;
+            border-color: #654321;
+        }
+
+        #shovelBtn:hover {
+            background: #A0522D;
+        }
+
+        #shovelBtn.selected {
+            background: #FFD700;
+            border-color: #FFA500;
+        }
+        
+        .plantButton:hover:not(:disabled) {
+            background: #7CFC00;
+            transform: scale(1.05);
+        }
+        
+        .plantButton:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .plantButton.selected {
+            background: #FFD700;
+            border-color: #FFA500;
+        }
+        
+        .plantButton.cooldown::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 7px;
+        }
+        
+        .plantIcon {
+            font-size: 32px;
+        }
+        
+        #gameBoard {
+            position: relative;
+            margin: 20px auto;
+            background: rgba(144, 238, 144, 0.3);
+            border: 5px solid #228B22;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+        
+        .cell {
+            border: 2px solid rgba(34, 139, 34, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .cell:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .plant {
+            font-size: 70px;
+            position: relative;
+            line-height: 1;
+        }
+        
+        .peashooter-custom {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle at 30% 30%, #90EE90, #228B22);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .peashooter-custom::before {
+            content: '';
+            position: absolute;
+            right: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 15px;
+            background: linear-gradient(to right, #228B22, #90EE90);
+            border-radius: 0 50% 50% 0;
+        }
+
+        .peashooter-custom::after {
+            content: '👁️';
+            position: absolute;
+            font-size: 20px;
+            top: 15px;
+            left: 15px;
+        }
+
+        .peashooter-mouth {
+            position: absolute;
+            width: 12px;
+            height: 8px;
+            background: #000;
+            border-radius: 50%;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .peashooter {
+            position: relative;
+        }
+
+        .torchwood::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 40px;
+            background: linear-gradient(to top, transparent, rgba(255, 140, 0, 0.6));
+            border-radius: 50% 50% 0 0;
+            animation: flame 0.5s infinite alternate;
+        }
+
+        @keyframes flame {
+            0% { transform: translateX(-50%) scaleY(1); }
+            100% { transform: translateX(-50%) scaleY(1.2); }
+        }
+        
+        .healthBar {
+            position: absolute;
+            bottom: 8px;
+            left: 15%;
+            right: 15%;
+            height: 8px;
+            background: #ccc;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #666;
+        }
+        
+        .healthFill {
+            height: 100%;
+            background: linear-gradient(to right, #f44336, #ff9800, #4CAF50);
+            transition: width 0.3s;
+            border-radius: 3px;
+        }
+        
+        .zombie {
+            position: absolute;
+            font-size: 60px;
+            z-index: 10;
+            line-height: 1;
+        }
+
+        .zombie.eating {
+            animation: zombieEat 0.5s infinite;
+        }
+
+        @keyframes zombieEat {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(-5px); }
+        }
+        
+        .projectile {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: radial-gradient(circle, #90EE90, #228B22);
+            border-radius: 50%;
+            z-index: 5;
+            box-shadow: 0 0 10px #90EE90;
+        }
+
+        .projectile.fire {
+            background: radial-gradient(circle, #ff8c00, #ff4500);
+            box-shadow: 0 0 15px #ff8c00;
+        }
+
+        .fallingSun {
+            position: absolute;
+            font-size: 32px;
+            cursor: pointer;
+            animation: sunFall 8s linear;
+            z-index: 100;
+            transition: transform 0.2s;
+        }
+
+        .fallingSun:hover {
+            transform: scale(1.3);
+        }
+
+        @keyframes sunFall {
+            0% {
+                top: -50px;
+            }
+            100% {
+                top: 100%;
+            }
+        }
+        
+        #gameOverScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        #gameOverContent {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        #gameOverContent h2 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        #gameOverContent p {
+            font-size: 24px;
+            margin: 10px 0;
+            color: #666;
+        }
+        
+        #nameInput {
+            width: 100%;
+            padding: 15px;
+            font-size: 20px;
+            border: 3px solid #228B22;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        button {
+            background: #228B22;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background: #2d6d2d;
+            transform: scale(1.05);
+        }
+        
+        #leaderboard {
+            margin-top: 20px;
+            text-align: left;
+        }
+        
+        .leaderboardEntry {
+            background: #f0f0f0;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .leaderboardEntry strong {
+            color: #228B22;
+        }
+
+        #timeDisplay {
+            font-size: 18px;
+            color: #FFD700;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="topBar">
+            <div id="sunCounter">
+                <span>☀️</span>
+                <span id="sunAmount">150</span>
+            </div>
+            <div id="stats">
+                <div id="timeDisplay">Čas: <span id="timeElapsed">0:00</span></div>
+                <div>Skóre: <span id="score">0</span></div>
+            </div>
+        </div>
+        
+        <div id="plantMenu">
+            <button class="plantButton" id="sunflowerBtn" onclick="selectPlant('sunflower')">
+                <span class="plantIcon">🌻</span>
+                <span>Slunečnice<br>(50 ☀️)</span>
+            </button>
+            <button class="plantButton" id="peashooterBtn" onclick="selectPlant('peashooter')">
+                <span class="plantIcon">🌿</span>
+                <span>Peashooter<br>(100 ☀️)</span>
+            </button>
+            <button class="plantButton" id="torchwoodBtn" onclick="selectPlant('torchwood')">
+                <span class="plantIcon">🪵</span>
+                <span>Hořící kmen<br>(175 ☀️)</span>
+            </button>
+            <button class="plantButton" id="shovelBtn" onclick="selectShovel()">
+                <span class="plantIcon">🪓</span>
+                <span>Lopata<br>(odebrat)</span>
+            </button>
+        </div>
+        
+        <div id="gameBoard"></div>
+    </div>
+    
+    <div id="gameOverScreen">
+        <div id="gameOverContent">
+            <h2 id="gameOverTitle">💀 Konec hry</h2>
+            <p>Skóre: <strong id="finalScore">0</strong></p>
+            <p>Čas přežití: <strong id="finalTime">0:00</strong></p>
+            <input type="text" id="nameInput" placeholder="Zadej své jméno" maxlength="20">
+            <div>
+                <button onclick="saveScore()">💾 Uložit skóre</button>
+                <button onclick="restartGame()">🔄 Hrát znovu</button>
+            </div>
+            <div id="leaderboard"></div>
+        </div>
+    </div>
+
+    <script>
+        const ROWS = 5;
+        const COLS = 9;
+        const CELL_SIZE = 90;
+        
+        let sun = 150;
+        let score = 0;
+        let selectedPlant = null;
+        let shovelMode = false;
+        let gameRunning = true;
+        let grid = [];
+        let zombies = [];
+        let projectiles = [];
+        let fallingSuns = [];
+        let zombieSpawnTimer = null;
+        let gameLoop = null;
+        let startTime = Date.now();
+        let currentZombieLimit = 1;
+        let spawnInterval = 20000;
+        let gameTime = 0;
+        let plantCooldowns = {};
+        let cellElements = [];
+        
+        const PLANTS = {
+            sunflower: { cost: 50, hp: 300, type: 'sunflower', icon: '🌻', cooldown: 7500 },
+            peashooter: { cost: 100, hp: 300, type: 'peashooter', icon: '🌿', cooldown: 7500 },
+            torchwood: { cost: 175, hp: 400, type: 'torchwood', icon: '🪵', cooldown: 30000 }
+        };
+        
+        function initGame() {
+            const board = document.getElementById('gameBoard');
+            board.style.width = COLS * CELL_SIZE + 'px';
+            board.style.height = ROWS * CELL_SIZE + 'px';
+            board.style.display = 'grid';
+            board.style.gridTemplateColumns = `repeat(${COLS}, ${CELL_SIZE}px)`;
+            board.style.gridTemplateRows = `repeat(${ROWS}, ${CELL_SIZE}px)`;
+            
+            grid = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+            cellElements = [];
+            
+            for (let row = 0; row < ROWS; row++) {
+                cellElements[row] = [];
+                for (let col = 0; col < COLS; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.onclick = () => handleCellClick(row, col);
+                    board.appendChild(cell);
+                    cellElements[row][col] = cell;
+                }
+            }
+            
+            startGame();
+        }
+        
+        function startGame() {
+            gameRunning = true;
+            startTime = Date.now();
+            gameLoop = setInterval(update, 50);
+            scheduleNextZombie();
+            setInterval(updateTimer, 1000);
+            setInterval(increaseDifficulty, 30000);
+            setInterval(dropSun, 10000);
+        }
+        
+        function dropSun() {
+            if (!gameRunning) return;
+            const x = Math.random() * (COLS * CELL_SIZE - 50) + 25;
+            const sunId = Date.now() + Math.random();
+            fallingSuns.push({ id: sunId, x: x });
+            
+            const sunEl = document.createElement('div');
+            sunEl.className = 'fallingSun';
+            sunEl.textContent = '☀️';
+            sunEl.style.left = x + 'px';
+            sunEl.id = 'sun_' + sunId;
+            sunEl.onclick = () => collectSun(sunId);
+            document.getElementById('gameBoard').appendChild(sunEl);
+            
+            setTimeout(() => {
+                const el = document.getElementById('sun_' + sunId);
+                if (el) el.remove();
+                fallingSuns = fallingSuns.filter(s => s.id !== sunId);
+            }, 8000);
+        }
+        
+        function collectSun(sunId) {
+            sun += 25;
+            updateSun();
+            const el = document.getElementById('sun_' + sunId);
+            if (el) el.remove();
+            fallingSuns = fallingSuns.filter(s => s.id !== sunId);
+        }
+        
+        function updateTimer() {
+            if (!gameRunning) return;
+            gameTime = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(gameTime / 60);
+            const seconds = gameTime % 60;
+            document.getElementById('timeElapsed').textContent = 
+                `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        function increaseDifficulty() {
+            if (!gameRunning) return;
+            
+            if (currentZombieLimit < 4) {
+                currentZombieLimit++;
+            }
+            
+            if (spawnInterval > 8000) {
+                spawnInterval -= 2000;
+            }
+        }
+        
+        function scheduleNextZombie() {
+            if (!gameRunning) return;
+            zombieSpawnTimer = setTimeout(() => {
+                spawnZombie();
+                scheduleNextZombie();
+            }, spawnInterval);
+        }
+        
+        function update() {
+            if (!gameRunning) return;
+            
+            updateSunflowers();
+            updateProjectiles();
+            updateZombies();
+            updatePeashooters();
+            render();
+        }
+        
+        function selectShovel() {
+            shovelMode = true;
+            selectedPlant = null;
+            document.getElementById('sunflowerBtn').classList.remove('selected');
+            document.getElementById('peashooterBtn').classList.remove('selected');
+            document.getElementById('torchwoodBtn').classList.remove('selected');
+            document.getElementById('shovelBtn').classList.add('selected');
+        }
+        
+        function selectPlant(type) {
+            const plant = PLANTS[type];
+            const now = Date.now();
+            
+            if (plantCooldowns[type] && now < plantCooldowns[type]) {
+                return;
+            }
+            
+            if (sun >= plant.cost) {
+                shovelMode = false;
+                selectedPlant = type;
+                document.getElementById('sunflowerBtn').classList.remove('selected');
+                document.getElementById('peashooterBtn').classList.remove('selected');
+                document.getElementById('torchwoodBtn').classList.remove('selected');
+                document.getElementById('shovelBtn').classList.remove('selected');
+                document.getElementById(type + 'Btn').classList.add('selected');
+            }
+        }
+        
+        function handleCellClick(row, col) {
+            if (!gameRunning) return;
+            
+            if (shovelMode) {
+                if (grid[row][col]) {
+                    grid[row][col] = null;
+                    shovelMode = false;
+                    document.getElementById('shovelBtn').classList.remove('selected');
+                    render(); // Re-render to show the removed plant
+                }
+                return;
+            }
+            
+            placePlant(row, col);
+        }
+        
+        function placePlant(row, col) {
+            if (!selectedPlant) return;
+            if (grid[row][col]) return;
+            
+            const plant = PLANTS[selectedPlant];
+            const now = Date.now();
+            
+            if (plantCooldowns[selectedPlant] && now < plantCooldowns[selectedPlant]) {
+                return;
+            }
+            
+            if (sun >= plant.cost) {
+                grid[row][col] = {
+                    type: plant.type,
+                    hp: plant.hp,
+                    maxHp: plant.hp,
+                    icon: plant.icon,
+                    lastSunTime: Date.now(),
+                    lastShootTime: Date.now()
+                };
+                sun -= plant.cost;
+                updateSun();
+                
+                plantCooldowns[selectedPlant] = now + plant.cooldown;
+                const btn = document.getElementById(selectedPlant + 'Btn');
+                btn.classList.add('cooldown');
+                
+                setTimeout(() => {
+                    btn.classList.remove('cooldown');
+                }, plant.cooldown);
+                
+                selectedPlant = null;
+                document.getElementById('sunflowerBtn').classList.remove('selected');
+                document.getElementById('peashooterBtn').classList.remove('selected');
+                document.getElementById('torchwoodBtn').classList.remove('selected');
+            }
+        }
+        
+        function updateSunflowers() {
+            const now = Date.now();
+            grid.forEach(row => {
+                row.forEach(cell => {
+                    if (cell && cell.type === 'sunflower') {
+                        if (now - cell.lastSunTime > 24000) {
+                            sun += 25;
+                            updateSun();
+                            cell.lastSunTime = now;
+                        }
+                    }
+                });
+            });
+        }
+        
+        function updatePeashooters() {
+            const now = Date.now();
+            grid.forEach((row, rowIdx) => {
+                row.forEach((cell, colIdx) => {
+                    if (cell && cell.type === 'peashooter') {
+                        const hasZombie = zombies.some(z => z.row === rowIdx);
+                        if (hasZombie && now - cell.lastShootTime > 1400) {
+                            shootProjectile(rowIdx, colIdx);
+                            cell.lastShootTime = now;
+                        }
+                    }
+                });
+            });
+        }
+        
+        function shootProjectile(row, col) {
+            projectiles.push({
+                row: row,
+                x: (col + 1) * CELL_SIZE,
+                y: row * CELL_SIZE + CELL_SIZE / 2,
+                damage: 20,
+                onFire: false
+            });
+        }
+        
+        function updateProjectiles() {
+            projectiles.forEach(proj => {
+                proj.x += 5;
+                
+                if (!proj.onFire) {
+                    const col = Math.floor(proj.x / CELL_SIZE);
+                    if (col >= 0 && col < COLS) {
+                        const plant = grid[proj.row][col];
+                        if (plant && plant.type === 'torchwood') {
+                            proj.onFire = true;
+                            proj.damage = 40;
+                        }
+                    }
+                }
+            });
+            
+            projectiles = projectiles.filter(proj => {
+                for (let i = 0; i < zombies.length; i++) {
+                    const zombie = zombies[i];
+                    if (zombie.row === proj.row && 
+                        Math.abs(zombie.x - proj.x) < 40) {
+                        zombie.hp -= proj.damage;
+                        if (zombie.hp <= 0) {
+                            zombies.splice(i, 1);
+                            score += 100;
+                            updateScore();
+                        }
+                        return false;
+                    }
+                }
+                
+                return proj.x < COLS * CELL_SIZE + 200;
+            });
+        }
+        
+        function spawnZombie() {
+            if (!gameRunning) return;
+            
+            if (zombies.length >= currentZombieLimit) return;
+            
+            const row = Math.floor(Math.random() * ROWS);
+            zombies.push({
+                row: row,
+                x: COLS * CELL_SIZE + 20,
+                hp: 200,
+                maxHp: 200,
+                eating: false,
+                eatingPlantCol: null
+            });
+        }
+        
+        function updateZombies() {
+            for (let i = zombies.length - 1; i >= 0; i--) {
+                const zombie = zombies[i];
+                const col = Math.floor(zombie.x / CELL_SIZE);
+                
+                if (col >= 0 && col < COLS) {
+                    const plant = grid[zombie.row][col];
+                    if (plant && zombie.x < (col + 0.85) * CELL_SIZE && zombie.x > (col + 0.2) * CELL_SIZE) {
+                        zombie.eating = true;
+                        zombie.eatingPlantCol = col;
+                        plant.hp -= 3;
+                        
+                        if (plant.hp <= 0) {
+                            grid[zombie.row][col] = null;
+                            zombie.eating = false;
+                            zombie.eatingPlantCol = null;
+                        }
+                    } else {
+                        zombie.eating = false;
+                        zombie.eatingPlantCol = null;
+                    }
+                }
+                
+                if (!zombie.eating) {
+                    zombie.x -= 0.35;
+                }
+                
+                if (zombie.x < -50) {
+                    endGame();
+                    return;
+                }
+            }
+        }
+        
+        function render() {
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    const cell = cellElements[row][col];
+                    const plant = grid[row][col];
+                    
+                    if (plant) {
+                        if (plant.type === 'peashooter') {
+                            cell.innerHTML = `
+                                <div class="plant peashooter">
+                                    <div class="peashooter-custom">
+                                        <div class="peashooter-mouth"></div>
+                                    </div>
+                                    <div class="healthBar">
+                                        <div class="healthFill" style="width: ${(plant.hp / plant.maxHp) * 100}%"></div>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            cell.innerHTML = `
+                                <div class="plant ${plant.type}">
+                                    ${plant.icon}
+                                    <div class="healthBar">
+                                        <div class="healthFill" style="width: ${(plant.hp / plant.maxHp) * 100}%"></div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        cell.innerHTML = '';
+                    }
+                }
+            }
+            
+            const board = document.getElementById('gameBoard');
+            document.querySelectorAll('.zombie').forEach(el => el.remove());
+            zombies.forEach(zombie => {
+                const zombieEl = document.createElement('div');
+                zombieEl.className = 'zombie' + (zombie.eating ? ' eating' : '');
+                zombieEl.textContent = '🧟';
+                zombieEl.style.left = zombie.x + 'px';
+                zombieEl.style.top = (zombie.row * CELL_SIZE + 15) + 'px';
+                board.appendChild(zombieEl);
+            });
+            
+            document.querySelectorAll('.projectile').forEach(el => el.remove());
+            projectiles.forEach(proj => {
+                const projEl = document.createElement('div');
+                projEl.className = 'projectile' + (proj.onFire ? ' fire' : '');
+                projEl.style.left = proj.x + 'px';
+                projEl.style.top = proj.y + 'px';
+                board.appendChild(projEl);
+            });
+        }
+        
+        function updateSun() {
+            document.getElementById('sunAmount').textContent = sun;
+            document.getElementById('sunflowerBtn').disabled = sun < 50;
+            document.getElementById('peashooterBtn').disabled = sun < 100;
+            document.getElementById('torchwoodBtn').disabled = sun < 175;
+        }
+        
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            clearInterval(gameLoop);
+            clearTimeout(zombieSpawnTimer);
+            
+            const minutes = Math.floor(gameTime / 60);
+            const seconds = gameTime % 60;
+            const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('gameOverTitle').textContent = '💀 Konec hry';
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalTime').textContent = timeStr;
+            document.getElementById('gameOverScreen').style.display = 'flex';
+            
+            loadLeaderboard();
+        }
+        
+        function saveScore() {
+            const name = document.getElementById('nameInput').value.trim();
+            if (!name) {
+                alert('Prosím zadej své jméno!');
+                return;
+            }
+            
+            try {
+                const minutes = Math.floor(gameTime / 60);
+                const seconds = gameTime % 60;
+                const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                const scoreData = {
+                    name: name,
+                    score: score,
+                    time: timeStr,
+                    timeSeconds: gameTime,
+                    date: new Date().toISOString()
+                };
+                
+                // Get existing scores
+                let scores = JSON.parse(localStorage.getItem('pvz_scores') || '[]');
+                scores.push(scoreData);
+                
+                // Sort by score (descending) and keep top 10
+                scores.sort((a, b) => b.score - a.score);
+                scores = scores.slice(0, 10);
+                
+                // Save back to localStorage
+                localStorage.setItem('pvz_scores', JSON.stringify(scores));
+                
+                loadLeaderboard();
+                alert('Skóre úspěšně uloženo! 🎉');
+            } catch (error) {
+                console.error('Chyba při ukládání:', error);
+                alert('Nepodařilo se uložit skóre. Zkus to prosím znovu.');
+            }
+        }
+        
+        function loadLeaderboard() {
+            try {
+                const scores = JSON.parse(localStorage.getItem('pvz_scores') || '[]');
+                displayLeaderboard(scores);
+            } catch (error) {
+                console.log('Chyba při načítání žebříčku:', error);
+                displayLeaderboard([]);
+            }
+        }
+        
+        function displayLeaderboard(scores) {
+            const leaderboard = document.getElementById('leaderboard');
+            if (scores.length === 0) {
+                leaderboard.innerHTML = '<p style="text-align: center; color: #666; margin-top: 20px;">Zatím žádné skóre</p>';
+                return;
+            }
+            
+            leaderboard.innerHTML = '<h3 style="margin: 20px 0 10px 0;">🏆 Tabulka vítězů</h3>' +
+                scores.map((entry, idx) => `
+                    <div class="leaderboardEntry">
+                        <div>
+                            <strong>${idx + 1}. ${entry.name}</strong>
+                        </div>
+                        <div style="text-align: right;">
+                            <strong>${entry.score} bodů</strong><br>
+                            <small>Čas: ${entry.time || 'N/A'}</small>
+                        </div>
+                    </div>
+                `).join('');
+        }
+        
+        function restartGame() {
+            sun = 150;
+            score = 0;
+            selectedPlant = null;
+            shovelMode = false;
+            grid = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+            zombies = [];
+            projectiles = [];
+            fallingSuns = [];
+            gameTime = 0;
+            currentZombieLimit = 1;
+            spawnInterval = 20000;
+            plantCooldowns = {};
+            
+            document.querySelectorAll('.fallingSun').forEach(el => el.remove());
+            document.querySelectorAll('.cooldown').forEach(el => el.classList.remove('cooldown'));
+            
+            updateSun();
+            updateScore();
+            document.getElementById('timeElapsed').textContent = '0:00';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            document.getElementById('nameInput').value = '';
+            
+            const board = document.getElementById('gameBoard');
+            board.innerHTML = '';
+            initGame();
+        }
+        
+        initGame();
+    </script>
+</body>
+</html>
